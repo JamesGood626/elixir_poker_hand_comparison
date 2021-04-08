@@ -44,145 +44,193 @@ defmodule Poker do
     "4" => 4,
     "3" => 3,
     "2" => 2
-   }
+  }
 
-   @table_game_state %{
-     "players" => [
-       %{ "seat" => 1, "hand" => [{:heart, "10"}, {:club, "10"}] },
-       %{ "seat" => 4, "hand" => [{:diamond, "9"}, {:spade, "10"}] }
-     ],
-     "table_cards" => [
-       {:diamond, "10"},
-       {:spade, "9"},
-       {:club, "9"},
-       {:club, "A"},
-       {:club, "2"},
-     ]
-   }
+  @table_game_state %{
+    "players" => [
+      %{ "seat" => 1, "hand" => [{:heart, "10"}, {:club, "10"}] },
+      %{ "seat" => 4, "hand" => [{:diamond, "9"}, {:spade, "10"}] }
+    ],
+    "table_cards" => [
+      {:diamond, "10"},
+      {:spade, "9"},
+      {:club, "9"},
+      {:club, "A"},
+      {:club, "2"},
+    ]
+  }
 
-   @ranks ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
-   @suits [:heart, :spade, :diamond, :club]
+  @ranks ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
+  @suits [:heart, :spade, :diamond, :club]
 
-   # Sequence in the Monadic sense
-   def sequence(xs) do
-     xs
-     |> Enum.reduce([], fn ({:right, x}, acc) -> [{:right, x} | acc]
-                           ({:left, _}, acc) -> acc end)
-   end
+  # Sequence in the Monadic sense
+  def sequence(xs) do
+    xs
+    |> Enum.reduce([], fn ({:right, x}, acc) -> [{:right, x} | acc]
+                          ({:left, _}, acc) -> acc end)
+  end
 
-   @doc """
-   cards = [{:club, "10"}, {:club, "8"}, {:club, "9"}, {:club, "A"}, {:club, "2"}]
-   make_removed_card_list(cards)
+  @doc """
+  cards = [{:club, "10"}, {:club, "8"}, {:club, "9"}, {:club, "A"}, {:club, "2"}]
+  make_removed_card_list(cards)
 
-   RESULT:
-   [
-     { {:club, "10"}, [{:club, "8"}, {:club, "9"}, {:club, "A"}, {:club, "2"}] },
-     { {:club, "8"}, [{:club, "10"}, {:club, "9"}, {:club, "A"}, {:club, "2"}] },
-     { {:club, "9"}, [{:club, "10"}, {:club, "8"}, {:club, "A"}, {:club, "2"}] },
-     { {:club, "A"}, [{:club, "10"}, {:club, "8"}, {:club, "9"}, {:club, "2"}] },
-     { {:club, "2"}, [{:club, "10"}, {:club, "8"}, {:club, "9"}, {:club, "A"}] }
-   ]
-   """
-   def make_removed_card_list(cards) do
-     1..5
-     |> Enum.map(fn _ -> cards end)
-     |> Enum.with_index
-     |> Enum.map(fn {[a | xs], 0} -> {a, xs}
-                    {[a, b | xs], 1} -> {b, [a | xs]}
-                    {[a, b, c | xs], 2} -> {c, [a, b | xs]}
-                    {[a, b, c, d | xs], 3} -> {d, [a, b, c | xs]}
-                    {[a, b, c, d | [e]], 4} -> {e, [a, b, c, d]} end)
-   end
+  RESULT:
+  [
+    { {:club, "10"}, [{:club, "8"}, {:club, "9"}, {:club, "A"}, {:club, "2"}] },
+    { {:club, "8"}, [{:club, "10"}, {:club, "9"}, {:club, "A"}, {:club, "2"}] },
+    { {:club, "9"}, [{:club, "10"}, {:club, "8"}, {:club, "A"}, {:club, "2"}] },
+    { {:club, "A"}, [{:club, "10"}, {:club, "8"}, {:club, "9"}, {:club, "2"}] },
+    { {:club, "2"}, [{:club, "10"}, {:club, "8"}, {:club, "9"}, {:club, "A"}] }
+  ]
+  """
+  def make_removed_card_list(cards) do
+    1..5
+    |> Enum.map(fn _ -> cards end)
+    |> Enum.with_index
+    |> Enum.map(fn {[a | xs], 0} -> {a, xs}
+                   {[a, b | xs], 1} -> {b, [a | xs]}
+                   {[a, b, c | xs], 2} -> {c, [a, b | xs]}
+                   {[a, b, c, d | xs], 3} -> {d, [a, b, c | xs]}
+                   {[a, b, c, d | [e]], 4} -> {e, [a, b, c, d]} end)
+  end
 
+  def flatten(xs), do: flatten(xs, [])
+  def flatten([[x | []] | ys ], zs), do: flatten(ys, [x | zs])
+  def flatten([[x | xs] | ys], zs), do: flatten([xs | ys], [x | zs])
 
-   def make_deck(), do: for rank <- @ranks, suit <- @suits, do: {suit, rank}
-   def make_shuffled_deck(), do: make_deck() |> Enum.shuffle
+  def make_table_card_permutations(4, cards) do
+    cards
+    |> make_removed_card_list
+    |> Enum.filter(fn ({_, xs}) -> xs end)
+  end
 
-   @doc """
-     EXAMPLE USAGE:
+  def make_table_card_permutations(3, cards) do
+    IO.puts("make_table_card_permutations result:")
+    cards
+    |> make_removed_card_list
+    |> Enum.map(fn {card, cards} ->
+      xs = [card | cards |> Enum.take(2)]
+      ys = [card | cards |> Enum.drop(1) |> Enum.take(2)]
+      zs = [card | cards |> Enum.drop(2) |> Enum.take(2)]
+      [xs, ys, zs]
+    end)
+    # |> flatten
+    |> IO.inspect
+    # |> Enum.dedup
+  end
 
-     Poker.check_suits([
-       {:diamond, "10"},
-       {:spade, "9"},
-       {:club, "9"},
-       {:club, "A"},
-       {:club, "2"}
-     ]) -> :nothing
+  def make_deck(), do: for rank <- @ranks, suit <- @suits, do: {suit, rank}
+  def make_shuffled_deck(), do: make_deck() |> Enum.shuffle
 
-     Poker.check_suits([
-       {:club, "10"},
-       {:club, "8"},
-       {:club, "9"},
-       {:club, "A"},
-       {:club, "2"}
-     ]) -> { :ok, {:all_same_suit} }
-   """
-   def check_suits([{a, _}, {b, _}, {c, _}, {d, _}, {e, _}] = cards) do
-     if length(cards) !== 5 do raise "Wrong number of cards passed to check_suits/1" end
+  @doc """
+  Patterns for creating the array of possible_made_hands
+  3 cards from table + 2 cards from player hand
+  4 cards from table + 1 card from player hand
+  5 cards from table (in the case where no other hands were made from the two
+                      possible patterns above... AND there's a possible made hand
+                      on the table that is ANYTHING OTHER than a High Card... i.e. Flush, Full House, etc..)
+  """
+  def make_all_possible_player_hands(table_cards, players) do
+    # 1. Map over every player... extracting the player's hand
+    # 2. Inside of the Map (over each player, create an array that )
+    players
+    |> Enum.map(fn %{"hand" => hand} ->
+      # 1. get all possible 3 card permutations from the table_cards, then append the player's hand
 
-     case a === b && b === c && c === d && d === e do
-       true ->  {:right, "ALL_SAME_SUIT"}
-       false -> {:left, "NOT_ALL_SAME_SUIT"}
-     end
-   end
+      # 2. get all possible 4 card permutations from the table_cards, then create two lists from that
+      #    with one of the player's cards being appended to each table_card 4 permutations in a separate list.
+      four_card_permutations = make_table_card_permutations(4, table_cards)
+      xs = four_card_permutations |> Enum.map(fn xs -> [Enum.at(hand, 0) | xs] end)
+      ys = four_card_permutations |> Enum.map(fn xs -> [Enum.at(hand, 1) | xs] end)
+      xs ++ ys
+    end)
+  end
 
-   def check_kind(:full_house, {:three_of_a_kind, x}, {:one_pair, y}, cards), do: {:right, {:full_house, %{"primary" => x, "secondary" => y}, cards}}
-   def check_kind(:full_house, _, _, _), do: raise "Invalid input to check_kind(:full_house, _, _, _)"
+  @doc """
+    EXAMPLE USAGE:
 
-   @doc """
-   hand = [ {:club, "10"}, {:spade, "10"}, {:diamond, "10"}, {:club, "9"}, {:heart, "9"} ]
-   Poker.check_for_pairs(hand)
+    Poker.check_suits([
+      {:diamond, "10"},
+      {:spade, "9"},
+      {:club, "9"},
+      {:club, "A"},
+      {:club, "2"}
+    ]) -> :nothing
 
-   RESULT... if further processing isn't done after the first map
-   [
-      right: {:three_of_a_kind, %{"card" => "10"},
-      [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]},
-      right: {:three_of_a_kind, %{"card" => "10"},
-      [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]},
-      right: {:three_of_a_kind, %{"card" => "10"},
-      [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]},
-      right: {:one_pair, %{"card" => "9"},
-      [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]},
-      right: {:one_pair, %{"card" => "9"},
-      [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]}
-   ]
+    Poker.check_suits([
+      {:club, "10"},
+      {:club, "8"},
+      {:club, "9"},
+      {:club, "A"},
+      {:club, "2"}
+    ]) -> { :ok, {:all_same_suit} }
+  """
+  def check_suits([{a, _}, {b, _}, {c, _}, {d, _}, {e, _}] = cards) do
+    if length(cards) !== 5 do raise "Wrong number of cards passed to check_suits/1" end
 
-   can remove duplicates this way:
-   iex(11)> Enum.dedup(xs)
-   [
-     right: {:three_of_a_kind, %{"card" => "10"},
-      [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]},
-     right: {:one_pair, %{"card" => "9"},
-      [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]}
-   ]
-   """
-   def check_for_pairs(cards) do
-     make_removed_card_list(cards)
-     |> Enum.map(
-         fn ({{_, x}, ys}) ->
-           ys
-           |> Enum.reduce({:left, "NO_PAIRS"}, fn ({_, y}, acc) ->
-             case {x === y, acc} do
-               {true, {:left, _}} ->
-                 {:right, {:one_pair, %{"card" => x}, cards}}
-               {true, {:right, {:one_pair, _, _}}} ->
-                 {:right, {:three_of_a_kind, %{"card" => x}, cards}}
-               {true, {:right, {:three_of_a_kind, _, _}}} ->
-                 {:right, {:four_of_a_kind, %{"card" => x}, cards}}
-               _ ->
-                acc
-             end
-           end)
-         end
-       )
-       |> Enum.dedup
-     # {:right, meta_data, cards}
-     # where meta_data stores information regarding the card which formed the four_of_a_kind,
-     # but meta_data will serve a more crucial function when it comes to resolving which player
-     # has a better flush || straight || full house, etc...
-     # Because in these situations we'll also need to know the high card of the made hand,
-     # or in the case of full house which cards over which, i.e. 10s over 9s, which will beat 9s over 10s.
-   end
+    case a === b && b === c && c === d && d === e do
+      true ->  {:right, "ALL_SAME_SUIT"}
+      false -> {:left, "NOT_ALL_SAME_SUIT"}
+    end
+  end
+
+  def check_kind(:full_house, {:three_of_a_kind, x}, {:one_pair, y}, cards), do: {:right, {:full_house, %{"primary" => x, "secondary" => y}, cards}}
+  def check_kind(:full_house, _, _, _), do: raise "Invalid input to check_kind(:full_house, _, _, _)"
+
+  @doc """
+  hand = [ {:club, "10"}, {:spade, "10"}, {:diamond, "10"}, {:club, "9"}, {:heart, "9"} ]
+  Poker.check_for_pairs(hand)
+
+  RESULT... if further processing isn't done after the first map
+  [
+    right: {:three_of_a_kind, %{"card" => "10"},
+    [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]},
+    right: {:three_of_a_kind, %{"card" => "10"},
+    [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]},
+    right: {:three_of_a_kind, %{"card" => "10"},
+    [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]},
+    right: {:one_pair, %{"card" => "9"},
+    [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]},
+    right: {:one_pair, %{"card" => "9"},
+    [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]}
+  ]
+
+  can remove duplicates this way:
+  iex(11)> Enum.dedup(xs)
+  [
+    right: {:three_of_a_kind, %{"card" => "10"},
+    [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]},
+    right: {:one_pair, %{"card" => "9"},
+    [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]}
+  ]
+  """
+  def check_for_pairs(cards) do
+    make_removed_card_list(cards)
+    |> Enum.map(
+        fn ({{_, x}, ys}) ->
+          ys
+          |> Enum.reduce({:left, "NO_PAIRS"}, fn ({_, y}, acc) ->
+            case {x === y, acc} do
+              {true, {:left, _}} ->
+                {:right, {:one_pair, %{"card" => x}, cards}}
+              {true, {:right, {:one_pair, _, _}}} ->
+                {:right, {:three_of_a_kind, %{"card" => x}, cards}}
+              {true, {:right, {:three_of_a_kind, _, _}}} ->
+                {:right, {:four_of_a_kind, %{"card" => x}, cards}}
+              _ ->
+              acc
+            end
+          end)
+        end
+      )
+      |> Enum.dedup
+    # {:right, meta_data, cards}
+    # where meta_data stores information regarding the card which formed the four_of_a_kind,
+    # but meta_data will serve a more crucial function when it comes to resolving which player
+    # has a better flush || straight || full house, etc...
+    # Because in these situations we'll also need to know the high card of the made hand,
+    # or in the case of full house which cards over which, i.e. 10s over 9s, which will beat 9s over 10s.
+  end
 
    # def check_kind(:three_of_a_kind, cards), do: {:right, {:three_of_a_kind, cards}}
    # def check_kind(:one_pair, cards), do: {:right, {:one_pair, cards}}
@@ -240,7 +288,6 @@ defmodule Poker do
    end
 
    def determine_made_hand(cards, {:left, "NO_STRAIGHT"}) do
-     # TODO/LLO
      card = cards
      |> Enum.reduce(nil, fn ({_, rank} = card, acc) ->
        cond do
@@ -407,3 +454,91 @@ end
 # hand = [ {:club, "A"}, {:heart, "7"}, {:spade, "8"}, {:club, "2"}, {:diamond, "3"} ]
 # Poker.determine_made_hand(hand) |> IO.inspect
 # {:right, {:high_card, %{"card" => {:club, "A"}}, [club: "A", heart: "7", spade: "8", club: "2", diamond: "3"]}}
+
+######################################################################
+# Next task after determine_made_hand has been implemented
+# Create a function that will take in the table cards and an array of players
+# make_all_possible_player_hands(table_cards, %{ "seat" => Int, "hand" => [Card, Card] })
+
+# And then return a structure like this:
+# %{
+#  "seat" => Int,
+#  "possible_made_hands" => [All possible 5 card combinations using the 5 table cards + 2 player cards]
+# }
+
+# Patterns for creating the array of possible_made_hands
+# 4 cards from table + 1 card from player hand
+# 3 cards from table + 2 cards from player hand
+# 5 cards from table (in the case where no other hands were made from the two
+#                     possible patterns above... AND there's a possible made hand
+#                     on the table that is ANYTHING OTHER than a High Card... i.e. Flush, FUll House, etc..)
+######################################################################
+
+xs = [club: "10", club: "8", club: "9", club: "A", club: "2"]
+Poker.make_table_card_permutations(3, xs)
+# |> IO.inspect()
+
+# Poker.flatten()
+
+# TODO/LLO: Need to determine how to get these duduped...
+# There are five extra three card permutations than necessary... (just the nature of the beast)
+# iex(43)> zs |> Enum.dedup
+# [
+#   [club: "2", club: "9", club: "A"],
+#   [club: "2", club: "8", club: "9"],
+#   [club: "2", club: "10", club: "8"],
+#   [club: "A", club: "9", club: "2"],
+#   [club: "A", club: "8", club: "9"],
+#   [club: "A", club: "10", club: "8"],
+#   [club: "9", club: "A", club: "2"],
+#   [club: "9", club: "8", club: "A"],
+#   [club: "9", club: "10", club: "8"],
+#   [club: "8", club: "A", club: "2"],
+#   [club: "8", club: "9", club: "A"],
+#   [club: "8", club: "10", club: "9"],
+#   [club: "10", club: "A", club: "2"],
+#   [club: "10", club: "9", club: "A"],
+#   [club: "10", club: "8", club: "9"]
+# ]
+# iex(44)> zs |> length
+# 15
+# iex(45)> x = [club: "8", club: "10", club: "9"]
+# [club: "8", club: "10", club: "9"]
+# iex(46)> y = [club: "10", club: "8", club: "9"]
+# [club: "10", club: "8", club: "9"]
+# iex(47)> x === y
+# false
+# iex(48)> x == y
+# false
+
+# SOLUTION:
+
+# Map over every resulting permutation and do this
+# iex(51)> [club: "10", club: "8", club: "9"] |> Enum.map(fn x -> x |> Tuple.to_list end)
+# [[:club, "10"], [:club, "8"], [:club, "9"]]
+# iex(55)> [[:club, "10"], [:club, "8"], [:club, "9"]] === [[:club, "10"], [:club, "8"], [:club, "9"]]
+# true
+
+
+#iex(57)> transform = fn x -> x |> Enum.map(fn x -> x |> Tuple.to_list end) |> Enum.dedup end
+# #Function<44.97283095/1 in :erl_eval.expr/5>
+# iex(58)> zs |> Enum.map(transform) |> Enum.dedup                                [
+#   [[:club, "2"], [:club, "9"], [:club, "A"]],
+#   [[:club, "2"], [:club, "8"], [:club, "9"]],
+#   [[:club, "2"], [:club, "10"], [:club, "8"]],
+#   [[:club, "A"], [:club, "9"], [:club, "2"]],
+#   [[:club, "A"], [:club, "8"], [:club, "9"]],
+#   [[:club, "A"], [:club, "10"], [:club, "8"]],
+#   [[:club, "9"], [:club, "A"], [:club, "2"]],
+#   [[:club, "9"], [:club, "8"], [:club, "A"]],
+#   [[:club, "9"], [:club, "10"], [:club, "8"]],
+#   [[:club, "8"], [:club, "A"], [:club, "2"]],
+#   [[:club, "8"], [:club, "9"], [:club, "A"]],
+#   [[:club, "8"], [:club, "10"], [:club, "9"]],
+#   [[:club, "10"], [:club, "A"], [:club, "2"]],
+#   [[:club, "10"], [:club, "9"], [:club, "A"]],
+#   [[:club, "10"], [:club, "8"], [:club, "9"]]
+# ]
+# iex(59)> zs |> Enum.map(transform) |> Enum.dedup |> length
+
+# ^^ This is close, but will need to replace dedup with a custom implemented function.
