@@ -70,11 +70,98 @@ defmodule Poker do
                           ({:left, _}, acc) -> acc end)
   end
 
-  @doc """
-  cards = [{:club, "10"}, {:club, "8"}, {:club, "9"}, {:club, "A"}, {:club, "2"}]
-  make_removed_card_list(cards)
+  def card_order(card), do: @card_rankings |> Map.get(card)
 
-  RESULT:
+  @doc """
+  make_six_pairs([club: "8", club: "9", club: "A", club: "2"])
+  [
+    [club: "8", club: "9"],
+    [club: "9", club: "A"],
+    [club: "8", club: "2"],
+    [club: "8", club: "A"],
+    [club: "A", club: "2"],
+    [club: "9", club: "2"]
+  ]
+  """
+  def make_six_pairs(xs, acc \\ [])
+  def make_six_pairs([_x | []], acc), do: acc
+  def make_six_pairs([x | ys], []) do
+    acc = for y <- ys, do: [x] ++ [y]
+    make_six_pairs(ys, acc)
+  end
+  def make_six_pairs([x | ys], acc) do
+    concat_acc = for y <- ys, do: [x] ++ [y]
+    make_six_pairs(ys, acc ++ concat_acc)
+  end
+
+  @doc """
+  Input:
+  [
+    {{:club, "10"}, [club: "8", club: "9", club: "A", club: "2"]},
+    {{:club, "8"}, [club: "10", club: "9", club: "A", club: "2"]},
+    {{:club, "9"}, [club: "10", club: "8", club: "A", club: "2"]},
+    {{:club, "A"}, [club: "10", club: "8", club: "9", club: "2"]},
+    {{:club, "2"}, [club: "10", club: "8", club: "9", club: "A"]}
+  ]
+
+  Output:
+  [
+    [
+      [club: "10", club: "8", club: "9"],
+      [club: "10", club: "8", club: "A"],
+      [club: "10", club: "8", club: "2"],
+      [club: "10", club: "9", club: "A"],
+      [club: "10", club: "9", club: "2"],
+      [club: "10", club: "A", club: "2"]
+    ],
+    [
+      [club: "8", club: "10", club: "9"],
+      [club: "8", club: "10", club: "A"],
+      [club: "8", club: "10", club: "2"],
+      [club: "8", club: "9", club: "A"],
+      [club: "8", club: "9", club: "2"],
+      [club: "8", club: "A", club: "2"]
+    ],
+    [
+      [club: "9", club: "10", club: "8"],
+      [club: "9", club: "10", club: "A"],
+      [club: "9", club: "10", club: "2"],
+      [club: "9", club: "8", club: "A"],
+      [club: "9", club: "8", club: "2"],
+      [club: "9", club: "A", club: "2"]
+    ],
+    [
+      [club: "A", club: "10", club: "8"],
+      [club: "A", club: "10", club: "9"],
+      [club: "A", club: "10", club: "2"],
+      [club: "A", club: "8", club: "9"],
+      [club: "A", club: "8", club: "2"],
+      [club: "A", club: "9", club: "2"]
+    ],
+    [
+      [club: "2", club: "10", club: "8"],
+      [club: "2", club: "10", club: "9"],
+      [club: "2", club: "10", club: "A"],
+      [club: "2", club: "8", club: "9"],
+      [club: "2", club: "8", club: "A"],
+      [club: "2", club: "9", club: "A"]
+    ]
+  ]
+  """
+  def make_multiple_six_pairs(xs) do
+    xs
+    |> Enum.map(fn ({x, xs}) ->
+      xs
+      |> Poker.make_six_pairs
+      |> Enum.map(fn y -> [x | y] end)
+    end)
+  end
+
+  @doc """
+  Input:
+  [{:club, "10"}, {:club, "8"}, {:club, "9"}, {:club, "A"}, {:club, "2"}]
+
+  Output:
   [
     { {:club, "10"}, [{:club, "8"}, {:club, "9"}, {:club, "A"}, {:club, "2"}] },
     { {:club, "8"}, [{:club, "10"}, {:club, "9"}, {:club, "A"}, {:club, "2"}] },
@@ -94,9 +181,32 @@ defmodule Poker do
                    {[a, b, c, d | [e]], 4} -> {e, [a, b, c, d]} end)
   end
 
-  def flatten(xs), do: flatten(xs, [])
-  def flatten([[x | []] | ys ], zs), do: flatten(ys, [x | zs])
-  def flatten([[x | xs] | ys], zs), do: flatten([xs | ys], [x | zs])
+  @doc """
+  result (a list of length 10):
+  (5*4)/(2*1) = 10 # with factorial cancelation.
+  [
+    [club: "10", club: "2", club: "8"],
+    [club: "10", club: "2", club: "9"],
+    [club: "10", club: "2", club: "A"],
+    [club: "10", club: "8", club: "9"],
+    [club: "10", club: "8", club: "A"],
+    [club: "10", club: "9", club: "A"],
+    [club: "2", club: "8", club: "9"],
+    [club: "2", club: "8", club: "A"],
+    [club: "2", club: "9", club: "A"],
+    [club: "8", club: "9", club: "A"]
+  ]
+  """
+  def five_choose_three_combinations(cards) do
+    cards
+    |> Poker.make_removed_card_list()
+    |> Poker.make_multiple_six_pairs
+    |> Enum.flat_map(fn x -> x end)
+    |> Enum.map(fn x -> MapSet.new(x) end)
+    |> MapSet.new
+    |> MapSet.to_list
+    |> Enum.map(fn x -> MapSet.to_list(x) end)
+  end
 
   def make_table_card_permutations(4, cards) do
     cards
@@ -104,8 +214,11 @@ defmodule Poker do
     |> Enum.filter(fn ({_, xs}) -> xs end)
   end
 
+  @doc """
+  5 choose 3 permutations should be 60
+  5 choose 3 combinations should be 10
+  """
   def make_table_card_permutations(3, cards) do
-    IO.puts("make_table_card_permutations result:")
     cards
     |> make_removed_card_list
     |> Enum.map(fn {card, cards} ->
@@ -114,37 +227,10 @@ defmodule Poker do
       zs = [card | cards |> Enum.drop(2) |> Enum.take(2)]
       [xs, ys, zs]
     end)
-    # |> flatten
-    |> IO.inspect
-    # |> Enum.dedup
   end
 
   def make_deck(), do: for rank <- @ranks, suit <- @suits, do: {suit, rank}
   def make_shuffled_deck(), do: make_deck() |> Enum.shuffle
-
-  @doc """
-  Patterns for creating the array of possible_made_hands
-  3 cards from table + 2 cards from player hand
-  4 cards from table + 1 card from player hand
-  5 cards from table (in the case where no other hands were made from the two
-                      possible patterns above... AND there's a possible made hand
-                      on the table that is ANYTHING OTHER than a High Card... i.e. Flush, Full House, etc..)
-  """
-  def make_all_possible_player_hands(table_cards, players) do
-    # 1. Map over every player... extracting the player's hand
-    # 2. Inside of the Map (over each player, create an array that )
-    players
-    |> Enum.map(fn %{"hand" => hand} ->
-      # 1. get all possible 3 card permutations from the table_cards, then append the player's hand
-
-      # 2. get all possible 4 card permutations from the table_cards, then create two lists from that
-      #    with one of the player's cards being appended to each table_card 4 permutations in a separate list.
-      four_card_permutations = make_table_card_permutations(4, table_cards)
-      xs = four_card_permutations |> Enum.map(fn xs -> [Enum.at(hand, 0) | xs] end)
-      ys = four_card_permutations |> Enum.map(fn xs -> [Enum.at(hand, 1) | xs] end)
-      xs ++ ys
-    end)
-  end
 
   @doc """
     EXAMPLE USAGE:
@@ -166,7 +252,7 @@ defmodule Poker do
     ]) -> { :ok, {:all_same_suit} }
   """
   def check_suits([{a, _}, {b, _}, {c, _}, {d, _}, {e, _}] = cards) do
-    if length(cards) !== 5 do raise "Wrong number of cards passed to check_suits/1" end
+    if length(cards) !== 5 do raise "DEVELOPER ERROR: Wrong number of cards passed to check_suits/1" end
 
     case a === b && b === c && c === d && d === e do
       true ->  {:right, "ALL_SAME_SUIT"}
@@ -203,27 +289,70 @@ defmodule Poker do
     right: {:one_pair, %{"card" => "9"},
     [club: "10", spade: "10", diamond: "10", club: "9", heart: "9"]}
   ]
+
+  TODO/LLO:
+  ...this function is pissing me off right now.
+
+  Thinking about the problem differently...
+  iex(14)> xs |> Enum.map(fn ({_, rank}) -> rank end)
+  ["A", "10", "2", "A"]
+
+  # WHERE the "A" || "10" || "2" inside the predicate is the card split from the remaining 4 cards.
+
+  # The case where we have a :three_of_a_kind
+  iex(16)> xs |> Enum.map(fn ({_, rank}) -> rank end) |> Enum.filter(fn x -> x === "A" end)
+  ["A", "A"]
+
+  # The case where we have a :four_of_a_kind
+  iex(19)> ["A", "10", "A", "A"] |> Enum.filter(fn x -> x === "A" end)
+  ["A", "A", "A"]
+
+  # The case where we have a :one_pair (and if our overall function returns two one_pairs... then we make it a :two_pair)
+  iex(17)> xs |> Enum.map(fn ({_, rank}) -> rank end) |> Enum.filter(fn x -> x === "10" end)
+  ["10"]
+
+  # The case where we have "NO_PAIRS"
+  iex(19)> ["A", "10", "A"] |> Enum.filter(fn x -> x === "2" end)
+  []
   """
   def check_for_pairs(cards) do
-    make_removed_card_list(cards)
-    |> Enum.map(
-        fn ({{_, x}, ys}) ->
-          ys
-          |> Enum.reduce({:left, "NO_PAIRS"}, fn ({_, y}, acc) ->
-            case {x === y, acc} do
-              {true, {:left, _}} ->
-                {:right, {:one_pair, %{"card" => x}, cards}}
-              {true, {:right, {:one_pair, _, _}}} ->
-                {:right, {:three_of_a_kind, %{"card" => x}, cards}}
-              {true, {:right, {:three_of_a_kind, _, _}}} ->
-                {:right, {:four_of_a_kind, %{"card" => x}, cards}}
-              _ ->
-              acc
-            end
-          end)
-        end
-      )
-      |> Enum.dedup
+    result =
+      make_removed_card_list(cards)
+      |> Enum.map(
+          fn ({{_, x}, ys}) ->
+              ys
+              |> Enum.map(fn ({_, rank}) -> rank end)
+              |> Enum.filter(fn y -> y === x end)
+              |> case do
+                [] ->
+                  {:left, "NO_PAIRS"}
+                [_, _, _, _] ->
+                  {:right, {:four_of_a_kind, %{"card" => x}, cards}}
+                [_, _, _] ->
+                  {:right, {:three_of_a_kind, %{"card" => x}, cards}}
+                [_] ->
+                  {:right, {:one_pair, %{"card" => x}, cards}}
+              end
+          end
+        )
+        |> sequence
+
+    # NOTE (this is to remove duplicates in the case of :one_pairs being made):
+    # [
+    #   right: {:one_pair, %{"card" => "10"},
+    #    [hearts: "7", spades: "2", club: "10", club: "2", club: "10"]},
+    #   right: {:one_pair, %{"card" => "2"},
+    #    [hearts: "7", spades: "2", club: "10", club: "2", club: "10"]},
+    #   right: {:one_pair, %{"card" => "10"},
+    #    [hearts: "7", spades: "2", club: "10", club: "2", club: "10"]},
+    #   right: {:one_pair, %{"card" => "2"},
+    #    [hearts: "7", spades: "2", club: "10", club: "2", club: "10"]}
+    # ]
+    if ((result |> length) === 4) do
+     result |> Enum.take(2)
+    else
+      result
+    end
     # {:right, meta_data, cards}
     # where meta_data stores information regarding the card which formed the four_of_a_kind,
     # but meta_data will serve a more crucial function when it comes to resolving which player
@@ -239,39 +368,61 @@ defmodule Poker do
    #   # {:right, {:two_pair, %{"high_pair" => x, "low_pair" => y} cards}}
    # end
 
+   @doc """
+   input = [club: "10", club: "8", club: "9", club: "A", club: "2"]
+   find_high_card(input)
+   output: {:club, "A"}
+   """
+   def find_high_card(cards) do
+    cards
+    |> Enum.reduce(nil,fn
+      (card, nil) -> card
+      ({_, card_val1} = card, {_, card_val2} = acc) ->
+        if card_order(card_val1) > card_order(card_val2) do card else acc end
+      end)
+   end
+
    # Function clauses to check for a (Royal Flush, Straight Flush, or Flush)
    def determine_made_hand(cards), do: determine_made_hand(cards, check_suits(cards))
    def determine_made_hand(cards, {:right, "ALL_SAME_SUIT"}) do
      case MapSet.equal?(make_rank_sequence(["A", "K", "Q", "J", "10"]), make_rank_sequence(cards)) do
        true ->
-         {:right, {:royal_flush, cards}}
+         {:right, {:royal_flush, nil, cards}}
        false ->
          cards_sequence = make_rank_sequence(cards)
+         {_, card} = find_high_card(cards)
          case Enum.find(make_rank_sequences(@ranks), false, fn sequence -> MapSet.equal?(sequence, cards_sequence) end) do
           false ->
-            {:right, {:flush, cards}}
+            {:right, {:flush, %{"high_card" => card}, cards}}
           # Enum.find returns the element that for which the conditional evaluates to true.
           _ ->
-            {:right, {:straight_flush, cards}}
+            {:right, {:straight_flush, %{"high_card" => card}, cards}}
          end
      end
    end
 
    # Function clauses to check for a (Straight)
+   x = [right: {:one_pair, %{"card" => "A"}, [hearts: "A", spades: "10", club: "10", club: "9", club: "A"]}]
+   y = [right: {:one_pair, %{"card" => "A"}, [hearts: "A", spades: "10", club: "10", club: "9", club: "A"]}]
+   z = [right: {:one_pair, %{"card" => "10"},  [hearts: "A", spades: "10", club: "10", club: "9", club: "A"]}]
 
    def determine_made_hand(cards, {:left, "NOT_ALL_SAME_SUIT"}) do
-     xs = cards |> check_for_pairs |> sequence
+     xs = cards |> check_for_pairs
 
      case xs do
        [] ->
          determine_made_hand(cards, {:left, "NO_PAIRS"})
-       [x | []] -> x
        [{:right, {:one_pair, %{"card" => x}, cards}}, {:right, {:one_pair, %{"card" => y}, _}} | []] ->
-          {:right, {:two_pair, %{"high_pair" => if x > y do x else y end, "low_pair" => if x < y do x else y end}}, cards}
+        if x === y do
+          {:right, {:one_pair, %{"card" => x}, cards}}
+        else
+          {:right, {:two_pair, %{"high_pair" => if x > y do x else y end, "low_pair" => if x < y do x else y end}, cards}}
+        end
        [{:right, {:three_of_a_kind, %{"card" => x}, cards}}, {:right, {:one_pair, %{"card" => y}, _}} | []] ->
           check_kind(:full_house, {:three_of_a_kind, x}, {:one_pair, y}, cards)
        [{:right, {:one_pair, %{"card" => y}, cards}}, {:right, {:three_of_a_kind, %{"card" => x}, _}} | []] ->
           check_kind(:full_house, {:three_of_a_kind, x}, {:one_pair, y}, cards)
+       [x | []] -> x
        _ -> raise "DEVELOPER ERROR: check_kind/2 generated an multiple invalid :right results for checking for :four_of_a_kind, :three_of_a_kind, and :one_pair"
      end
    end
@@ -280,7 +431,8 @@ defmodule Poker do
      cards_sequence = make_rank_sequence(cards)
      case Enum.find(make_rank_sequences(cards), false, fn sequence -> MapSet.equal?(sequence, cards_sequence) end) do
        false ->
-        {:right, {:straight, cards}}
+        {_, card} = find_high_card(cards)
+        {:right, {:straight, %{"high_card" => card}, cards}}
        # Enum.find returns the element that for which the conditional evaluates to true.
        _ ->
         determine_made_hand(cards, {:left, "NO_STRAIGHT"})
@@ -300,8 +452,429 @@ defmodule Poker do
        end
      end)
 
-     {:right, {:high_card, %{"card" => card}, cards}}
+     {_, card_val} = card
+     {:right, {:high_card, %{"card" => card_val}, cards}}
    end
+
+
+   def determine_stronger_hand({card1, hand1}, {card2, hand2}) do
+    if card_order(card1) === card_order(card2) do "TIE" end
+
+    if card_order(card1) > card_order(card2) do
+      hand1
+    else
+      hand2
+    end
+   end
+
+   # NOTE: For comparing Full Houses and two pairs
+   def determine_stronger_hand({primary1, secondary1, hand1}, {primary2, secondary2, hand2}) do
+    if card_order(primary1) === card_order(primary2) do
+      if card_order(secondary1) === card_order(secondary2) do
+        "TIE"
+      else
+        # i.e. Aces over 10s would beat out Aces over 9s
+        if card_order(secondary1) > card_order(secondary2) do
+          hand1
+        else
+          hand2
+        end
+      end
+    end
+
+    if card_order(primary1) > card_order(primary2) do
+      hand1
+    else
+      hand2
+    end
+   end
+
+  # (1) Royal Flush -> A, K, Q, J, 10, all the same suit
+  def determine_stronger_hand({:royal_flush, _, _} = hand1, {:royal_flush, _, _} = hand2), do: "TIE"
+  def determine_stronger_hand({:royal_flush, _, _} = winning_hand, _), do: winning_hand
+  def determine_stronger_hand(_, {:royal_flush, _, _} = winning_hand), do: winning_hand
+
+
+  # (2) Straight flush -> Five cards in a sequence, all in the same suit
+  def determine_stronger_hand({:straight_flush, %{"high_card" => high_card1}, _} = hand1, {:straight_flush, %{"high_card" => high_card2}, _} = hand2) do
+   determine_stronger_hand({high_card1, hand1}, {high_card2, hand2})
+  end
+
+  def determine_stronger_hand({:straight_flush, _, _} = winning_hand, _), do: winning_hand
+  def determine_stronger_hand(_, {:straight_flush, _, _} = winning_hand), do: winning_hand
+
+  # (3) Four of a kind -> All four cards in the same rank.
+  def determine_stronger_hand({:four_of_a_kind, %{"card" => card1}, _} = hand1, {:four_of_a_kind, %{"card" => card2}, _} = hand2) do
+    determine_stronger_hand({card1, hand1}, {card2, hand2})
+  end
+
+  def determine_stronger_hand({:four_of_a_kind, _, _} = winning_hand, _), do: winning_hand
+  def determine_stronger_hand(_, {:four_of_a_kind, _, _} = winning_hand), do: winning_hand
+
+  # (4) Full house -> Three of a king with a pair (i.e. 10 10 10 9 9 10s over 9s; beats 10 10 10 9 9)
+  def determine_stronger_hand({:full_house, %{"primary" => primary1, "secondary" => secondary1}, _} = hand1, {:full_house, %{"primary" => primary2, "secondary" => secondary2}, _} = hand2) do
+    determine_stronger_hand({primary1, secondary1, hand1}, {primary2, secondary2, hand2})
+  end
+
+  # (5) Flush -> Any five cards of the same suit, but not in a sequence
+  def determine_stronger_hand({:flush, %{"high_card" => high_card1}, _} = hand1, {:flush, %{"high_card" => high_card2}, _} = hand2) do
+    determine_stronger_hand({high_card1, hand1}, {high_card2, hand2})
+  end
+
+  # (6) Straight -> Five cards in a sequence, but not of the same suit
+  def determine_stronger_hand({:straight, %{"high_card" => high_card1}, _} = hand1, {:straight, %{"high_card" => high_card2}, _} = hand2) do
+    determine_stronger_hand({high_card1, hand1}, {high_card2, hand2})
+  end
+
+  def determine_stronger_hand({:straight, _, _} = winning_hand, _), do: winning_hand
+  def determine_stronger_hand(_, {:straight, _, _} = winning_hand), do: winning_hand
+
+  # (7) Three of a Kind -> Three cards of the same rank
+  def determine_stronger_hand({:three_of_a_kind, %{"card" => card1}, _} = hand1, {:three_of_a_kind, %{"card" => card2}, _} = hand2) do
+    determine_stronger_hand({card1, hand1}, {card2, hand2})
+   end
+
+  def determine_stronger_hand({:three_of_a_kind, _, _} = winning_hand, _), do: winning_hand
+  def determine_stronger_hand(_, {:three_of_a_kind, _, _} = winning_hand), do: winning_hand
+
+  # (8) Two pair -> Two different pairs
+  def determine_stronger_hand({:two_pair, %{"high_pair" => high_pair1, "low_pair" => low_pair1}, _} = hand1, {:two_pair, %{"high_pair" => high_pair2, "low_pair" => low_pair2}, _} = hand2) do
+    determine_stronger_hand({high_pair1, low_pair1, hand1}, {high_pair2, low_pair2, hand2})
+  end
+
+  def determine_stronger_hand({:two_pair, _, _} = winning_hand, _), do: winning_hand
+  def determine_stronger_hand(_, {:two_pair, _, _} = winning_hand), do: winning_hand
+
+  # (9) Pair -> Two cards of the same rank
+  def determine_stronger_hand({:one_pair, %{"card" => card1}, _} = hand1, {:one_pair, %{"card" => card2}, _} = hand2) do
+    determine_stronger_hand({card1, hand1}, {card2, hand2})
+  end
+
+  def determine_stronger_hand({:one_pair, _, _} = winning_hand, _), do: winning_hand
+  def determine_stronger_hand(_, {:one_pair, _, _} = winning_hand), do: winning_hand
+
+  # (10) High Card -> When you haven't made any of the hands above, the highest card plays
+  def determine_stronger_hand({:high_card, %{"card" => card1}} = hand1, {:high_card, %{"card" => card2} = hand2}) do
+    determine_stronger_hand({card1, hand1}, {card2, hand2})
+  end
+
+  @doc """
+  To be used by the function (final_showdown) that runs reduce over a list of this structure:
+  [
+    {1, {:high_card, %{"card" => "A"}, [spades: "10", club: "8", club: "9", club: "A", club: "2"]}},
+    {1, {:one_pair, %{"card" => "10"}, [spades: "10", club: "10", club: "8", club: "9", club: "A"]}},
+    {1, {:two_pair, %{"high_pair" => "A", "low_pair" => "10"}, [hearts: "A", spades: "10", club: "10", club: "9", club: "A"]}},
+    {9, {:high_card, %{"card" => "A"}, [spades: "2", club: "10", club: "8", club: "9", club: "A"]}},
+    {9, {:one_pair, %{"card" => "2"}, [spades: "2", club: "10", club: "8", club: "9", club: "2"]}}
+  ]
+  where {seat, hand}
+  """
+  def single_showdown({seat1, hand1} = pair1, {seat2, hand2} = pair2) do
+    case determine_stronger_hand(hand1, hand2) do
+      "TIE" -> [pair1, pair2]
+      stronger_hand ->
+        if stronger_hand === hand1 do
+          pair1
+        else
+          pair2
+        end
+    end
+  end
+
+  @doc """
+  input = [
+    {1, {:high_card, %{"card" => "A"}, [spades: "10", club: "8", club: "9", club: "A", club: "2"]}},
+    {1, {:one_pair, %{"card" => "10"}, [spades: "10", club: "10", club: "8", club: "9", club: "A"]}},
+    {1, {:two_pair, %{"high_pair" => "A", "low_pair" => "10"}, [hearts: "A", spades: "10", club: "10", club: "9", club: "A"]}},
+    {9, {:high_card, %{"card" => "A"}, [spades: "2", club: "10", club: "8", club: "9", club: "A"]}},
+    {9, {:one_pair, %{"card" => "2"}, [spades: "2", club: "10", club: "8", club: "9", club: "2"]}}
+  ]
+  """
+  def final_showdown(all_player_made_hands) do
+    all_player_made_hands
+    |> Enum.reduce(nil, fn ({seat, current_hand}, acc) ->
+      cond do
+        acc === nil -> {seat, current_hand}
+        # If acc is list that means we've had a "TIE" in a previous comparison
+        is_list(acc) ->
+          [{seat, prev_hand}, _] = acc
+          result = single_showdown({seat, current_hand}, {seat, prev_hand})
+          if result === {seat, prev_hand} do acc else result end
+        true -> single_showdown({seat, current_hand}, acc)
+      end
+    end)
+  end
+
+  @doc """
+  # ALMOST EFFING FINISHED!
+  # Below is the data structure that you'll be using to determine which player has the strongest hand...
+  [
+    %{
+      "made_hands" => %{
+        "flush" => nil,
+        "four_of_a_kind" => nil,
+        "full_house" => nil,
+        "high_card" => {:high_card, %{"card" => "A"}, [spades: "10", club: "8", club: "9", club: "A", club: "2"]},
+        "one_pair" => {:one_pair, %{"card" => "10"}, [spades: "10", club: "10", club: "8", club: "9", club: "A"]},
+        "royal_flush" => nil,
+        "straight" => nil,
+        "straight_flush" => nil,
+        "three_of_a_kind" => nil,
+        "two_pair" => {:two_pair, %{"high_pair" => "A", "low_pair" => "10"}, [hearts: "A", spades: "10", club: "10", club: "9", club: "A"]}
+      },
+      "seat" => 1
+    },
+    %{
+      "made_hands" => %{
+        "flush" => nil,
+        "four_of_a_kind" => nil,
+        "full_house" => nil,
+        "high_card" => {:high_card, %{"card" => "A"}, [spades: "2", club: "10", club: "8", club: "9", club: "A"]},
+        "one_pair" => {:one_pair, %{"card" => "2"}, [spades: "2", club: "10", club: "8", club: "9", club: "2"]},
+        "royal_flush" => nil,
+        "straight" => nil,
+        "straight_flush" => nil,
+        "three_of_a_kind" => nil,
+        "two_pair" => nil
+      },
+      "seat" => 9
+    }
+  ]
+
+  # 1. Iterate over the above data structure and transform it into:
+  [
+    {1, {:high_card, %{"card" => "A"}, [spades: "10", club: "8", club: "9", club: "A", club: "2"]}},
+    {1, {:one_pair, %{"card" => "10"}, [spades: "10", club: "10", club: "8", club: "9", club: "A"]}},
+    {1, {:two_pair, %{"high_pair" => "A", "low_pair" => "10"}, [hearts: "A", spades: "10", club: "10", club: "9", club: "A"]}},
+    {9, {:high_card, %{"card" => "A"}, [spades: "2", club: "10", club: "8", club: "9", club: "A"]}},
+    {9, {:one_pair, %{"card" => "2"}, [spades: "2", club: "10", club: "8", club: "9", club: "2"]}}
+  ]
+
+  # 2. And determining the best hand of all the players just comes down to reducing over the list and storing the best {seat, hand} pair at each comparison
+  #    in the acc value.
+  """
+  def convert_made_hands_for_showdown(all_player_hands) do
+    all_player_hands
+    |> Enum.map(fn %{"made_hands" => made_hands, "seat" => seat} ->
+      made_hands
+      |> Map.keys
+      |> Enum.reduce([], fn (key, acc) ->
+        hand = Map.get(made_hands, key)
+        if hand === nil do acc else [{seat, hand} | acc] end
+      end)
+    end)
+    # flattens a nested list ["a", ["c", "b"]] to ["a", "c", "b"]
+    |> Enum.flat_map(fn x -> x end)
+  end
+
+  # (1) Royal Flush -> A, K, Q, J, 10, all the same suit
+  # (2) Straight flush -> Five cards in a sequence, all in the same suit
+  # (3) Four of a kind -> All four cards in the same rank.
+  # (4) Full house -> Three of a king with a pair (i.e. 10 10 10 9 9 10s over 9s; beats 10 10 10 9 9)
+  # (5) Flush -> Any five cards of the same suit, but not in a sequence
+  # (6) Straight -> Five cards in a sequence, but not of the same suit
+  # (7) Three of a Kind -> Three cards of the same rank
+  # (8) Two pair -> Two different pairs
+  # (9) Pair -> Two cards of the same rank
+  # (10) High Card -> When you haven't made any of the hands above, the highest card plays
+
+   @doc """
+
+   input = [
+     NOTE: The first two elements of the list are duplicates, want to remove them:
+     {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "10"}},
+      [hearts: "A", spades: "10", club: "10", club: "8", club: "A"]},
+     {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "10"}},
+      [hearts: "A", spades: "10", club: "10", club: "9", club: "A"]}
+   ]
+
+   output = %{
+     "royal_flush" => nil,
+     "straight_flush" => nil,
+     "four_of_a_kind" => nil,
+     "full_house" => nil,
+     "flush" => nil,
+     "straight" => nil,
+     "three_of_a_kind" => nil,
+     "two_pair" => nil,
+     "one_pair" => nil,
+     "high_card" => nil
+   }
+
+   Two cases:
+   1. In the event that the hands are duplicate, we just keep the pair that's currently stored on the final output map.
+   2. In the event that the hands are the same type (i.e. :two_pair), we invoke a function with the function signature (:two_pair, hand1, hand2)
+      That will determine which is the stronger hand and return it. <- (this function can be used in the final showdown hand comparison logic too...)
+
+   """
+   def filter_gratuitous_made_hands(made_hands) do
+    x = %{
+      "royal_flush" => nil,
+      "straight_flush" => nil,
+      "four_of_a_kind" => nil,
+      "full_house" => nil,
+      "flush" => nil,
+      "straight" => nil,
+      "three_of_a_kind" => nil,
+      "two_pair" => nil,
+      "one_pair" => nil,
+      "high_card" => nil
+    }
+
+    made_hands
+    |> Enum.reduce(x, fn ({:right, {hand_type, _, _} = hand}, acc) ->
+      hand_type_str = Atom.to_string(hand_type)
+      currently_stored_hand = Map.get(acc, hand_type_str)
+      if currently_stored_hand === nil do
+        Map.put(acc, hand_type_str, hand)
+      else
+        stronger_hand = determine_stronger_hand(hand, currently_stored_hand)
+        # NOTE: This check is due to the fact that I overlooked returning the cards which make up the hand from the detemine_stronger_hand/2 function...
+        cond do
+          stronger_hand === hand -> acc
+          stronger_hand === "TIE" -> acc
+          true -> Map.put(acc, hand_type_str, hand)
+        end
+      end
+    end)
+   end
+
+
+   @doc """
+  Patterns for creating the array of possible_made_hands
+  3 cards from table + 2 cards from player hand
+  4 cards from table + 1 card from player hand
+  5 cards from table (in the case where no other hands were made from the two
+                      possible patterns above... AND there's a possible made hand
+                      on the table that is ANYTHING OTHER than a High Card... i.e. Flush, Full House, etc..)
+  Input:
+  players = [
+    %{"seat" => 1, "hand" => [{:hearts, "A"}, {:spades, "10"}]},
+    %{"seat" => 9, "hand" => [{:hearts, "7"}, {:spades, "2"}]}
+  ]
+  table_cards = [club: "10", club: "8", club: "9", club: "A", club: "2"]
+
+  Output:
+  [
+    %{
+      "possible_made_hands" => [
+        [hearts: "A", spades: "10", club: "10", club: "2", club: "8"],
+        [hearts: "A", spades: "10", club: "10", club: "2", club: "9"],
+        [hearts: "A", spades: "10", club: "10", club: "2", club: "A"],
+        [hearts: "A", spades: "10", club: "10", club: "8", club: "9"],
+        [hearts: "A", spades: "10", club: "10", club: "8", club: "A"],
+        [hearts: "A", spades: "10", club: "10", club: "9", club: "A"],
+        [hearts: "A", spades: "10", club: "2", club: "8", club: "9"],
+        [hearts: "A", spades: "10", club: "2", club: "8", club: "A"],
+        [hearts: "A", spades: "10", club: "2", club: "9", club: "A"],
+        [hearts: "A", spades: "10", club: "8", club: "9", club: "A"],
+        [hearts: "A", club: "8", club: "9", club: "A", club: "2"],
+        [hearts: "A", club: "10", club: "9", club: "A", club: "2"],
+        [hearts: "A", club: "10", club: "8", club: "A", club: "2"],
+        [hearts: "A", club: "10", club: "8", club: "9", club: "2"],
+        [hearts: "A", club: "10", club: "8", club: "9", club: "A"],
+        [spades: "10", club: "8", club: "9", club: "A", club: "2"],
+        [spades: "10", club: "10", club: "9", club: "A", club: "2"],
+        [spades: "10", club: "10", club: "8", club: "A", club: "2"],
+        [spades: "10", club: "10", club: "8", club: "9", club: "2"],
+        [spades: "10", club: "10", club: "8", club: "9", club: "A"]
+      ],
+      "seat" => 1
+    },
+    %{
+      "made_hands" => [
+        [hearts: "7", spades: "2", club: "10", club: "2", club: "8"],
+        [hearts: "7", spades: "2", club: "10", club: "2", club: "9"],
+        [hearts: "7", spades: "2", club: "10", club: "2", club: "A"],
+        [hearts: "7", spades: "2", club: "10", club: "8", club: "9"],
+        [hearts: "7", spades: "2", club: "10", club: "8", club: "A"],
+        [hearts: "7", spades: "2", club: "10", club: "9", club: "A"],
+        [hearts: "7", spades: "2", club: "2", club: "8", club: "9"],
+        [hearts: "7", spades: "2", club: "2", club: "8", club: "A"],
+        [hearts: "7", spades: "2", club: "2", club: "9", club: "A"],
+        [hearts: "7", spades: "2", club: "8", club: "9", club: "A"],
+        [hearts: "7", club: "8", club: "9", club: "A", club: "2"],
+        [hearts: "7", club: "10", club: "9", club: "A", club: "2"],
+        [hearts: "7", club: "10", club: "8", club: "A", club: "2"],
+        [hearts: "7", club: "10", club: "8", club: "9", club: "2"],
+        [hearts: "7", club: "10", club: "8", club: "9", club: "A"],
+        [spades: "2", club: "8", club: "9", club: "A", club: "2"],
+        [spades: "2", club: "10", club: "9", club: "A", club: "2"],
+        [spades: "2", club: "10", club: "8", club: "A", club: "2"],
+        [spades: "2", club: "10", club: "8", club: "9", club: "2"],
+        [spades: "2", club: "10", club: "8", club: "9", club: "A"]
+      ],
+      "seat" => 9
+    }
+  ]
+  """
+  def make_all_possible_player_hands(table_cards, players) do
+    # 1. Map over every player... extracting the player's hand
+    # 2. Inside of the Map (over each player, create an array that )
+    players
+    |> Enum.map(fn %{"seat" => seat, "hand" => hand} ->
+      # 1. get all possible 3 card permutations from the table_cards, then append the player's hand
+      # IMMEDIATE TODO: Finish the implementation for mark_table_card_permutations(3, _)
+      three_card_permutations = five_choose_three_combinations(table_cards)
+      xs = three_card_permutations |> Enum.map(fn xs -> [Enum.at(hand, 0) | [Enum.at(hand, 1) | xs]] end)
+
+      # 2. get all possible 4 card permutations from the table_cards, then create two lists from that
+      #    with one of the player's cards being appended to each table_card 4 permutations in a separate list.
+      four_card_permutations = make_table_card_permutations(4, table_cards)
+      ys = four_card_permutations |> Enum.map(fn ({_ ,xs}) -> [Enum.at(hand, 0) | xs] end)
+      zs = four_card_permutations |> Enum.map(fn ({_ ,xs}) -> [Enum.at(hand, 1) | xs] end)
+      %{"seat" => seat, "possible_made_hands" => xs ++ ys ++ zs}
+    end)
+  end
+
+  @doc """
+  Input:
+  The output of make_all_possible_player_hands/2
+
+  Output:
+
+  """
+  def determine_all_made_player_hands(xs) do
+    xs
+    |> Enum.map(fn %{"seat" => seat, "possible_made_hands" => possible_made_hands} ->
+      IO.puts("********Seat #/#{seat} ***********************\n")
+      made_hands =
+        possible_made_hands
+        |> Enum.map(fn cards ->
+          # IO.puts("Input cards: ")
+          # IO.inspect(cards)
+
+          result = determine_made_hand(cards)
+
+          # IO.puts("Result of determine_made_hand: ")
+          # IO.inspect(result)
+          # IO.puts("\n")
+        end)
+        |> filter_gratuitous_made_hands()
+        |> IO.inspect
+        # |> TODO: function which will eliminate multiple similar :one_pair/:two_pair/:three_of_a_kind/:four_of_a_kind
+        #          if the cards that make them up are the same.
+
+
+      IO.puts("********************************")
+      %{"seat" => seat, "made_hands" => made_hands}
+    end)
+    |> convert_made_hands_for_showdown
+  end
+
+  # determine_made_hands input/output:
+  # [hearts: "A", spades: "10", club: "10", club: "2", club: "8"] <- erroneous result (yields :two_pair, when it should just be pair)
+
+  # ^^ So this is the primary issue:
+  # 1. Should be yielding :one_pair
+  # 2. If there's multiple :one_pair of the same type (due to the different permutations being generated),
+  #    Then you want to just ignore the duplicates.
+
+  # Gets it right in this case though:
+  # input = [hearts: "A", spades: "10", club: "10", club: "2", club: "A"]
+  # Result of determine_made_hand:
+  # {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "10"}},
+  #   [hearts: "A", spades: "10", club: "10", club: "2", club: "A"]}
 
    @doc """
    EXAMPLE USAGE:
@@ -475,7 +1048,7 @@ end
 ######################################################################
 
 xs = [club: "10", club: "8", club: "9", club: "A", club: "2"]
-Poker.make_table_card_permutations(3, xs)
+# Poker.make_table_card_permutations(3, xs) |> Enum.flat_map(fn x -> x end) |> IO.inspect
 # |> IO.inspect()
 
 # Poker.flatten()
@@ -539,6 +1112,90 @@ Poker.make_table_card_permutations(3, xs)
 #   [[:club, "10"], [:club, "9"], [:club, "A"]],
 #   [[:club, "10"], [:club, "8"], [:club, "9"]]
 # ]
-# iex(59)> zs |> Enum.map(transform) |> Enum.dedup |> length
+# iex(59)> zs |> Enum.map(transform)
+
+# where xs is the flattened list of Poker.make_table_card_permutations(3, _)
+# xs
+# |> Enum.map(transform)
+# |> Enum.reduce(MapSet.new([]), fn (x, acc) -> acc |> MapSet.put(MapSet.new(x)) end)
+# |> MapSet.to_list
+# |> Enum.map(fn x -> x |> MapSet.to_list end)
 
 # ^^ This is close, but will need to replace dedup with a custom implemented function.
+# BUT it only works if the elements of the two respective lists are in the same order...
+# x = [[:club, "10"], [:club, "8"], [:club, "9"]]
+# y = [[:club, "9"], [:club, "10"], [:club, "8"]]
+# iex(15)> x === [[:club, "10"], [:club, "8"], [:club, "9"]]
+# true
+# iex(16)> x === y
+# false
+# iex(17)> x
+# [[:club, "10"], [:club, "8"], [:club, "9"]]
+# iex(18)> y
+# [[:club, "9"], [:club, "10"], [:club, "8"]]
+
+# So, this will require that this representation of three ards be translated into another data structure which
+# can more easily be tested for equality... and then transformed back into the representation it was before the equality test.
+
+# Poker.make_six_pairs([club: "8", club: "9", club: "A", club: "2"]) |> IO.inspect
+players = [
+  %{"seat" => 1, "hand" => [{:hearts, "A"}, {:spades, "10"}]}, # Should only have.... a :two_pair "A" & "10" and high_card "A" as made_hands results...
+  %{"seat" => 9, "hand" => [{:hearts, "7"}, {:spades, "2"}]} # Should only have.... High card "A" and one_pair "2" as made_hands results...
+]
+table_cards = [club: "10", club: "8", club: "9", club: "A", club: "2"]
+Poker.make_all_possible_player_hands(table_cards, players) |> Poker.determine_all_made_player_hands |> IO.inspect |> Poker.final_showdown |> IO.inspect
+
+# TODO/LLO (This is all effed up...)
+# The Output:
+# [
+#   %{
+#     "made_hands" => [
+#       {:right, {:two_pair, %{"high_pair" => "10", "low_pair" => "10"}}, [hearts: "A", spades: "10", club: "10", club: "2", club: "8"]},
+#       {:right, {:two_pair, %{"high_pair" => "10", "low_pair" => "10"}}, [hearts: "A", spades: "10", club: "10", club: "2", club: "9"]},
+#       {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "10"}}, [hearts: "A", spades: "10", club: "10", club: "2", club: "A"]},
+#       {:right, {:two_pair, %{"high_pair" => "10", "low_pair" => "10"}}, [hearts: "A", spades: "10", club: "10", club: "8", club: "9"]},
+#       {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "10"}}, [hearts: "A", spades: "10", club: "10", club: "8", club: "A"]},
+#       {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "10"}}, [hearts: "A", spades: "10", club: "10", club: "9", club: "A"]},
+#       {:right, {:high_card, %{"card" => {:hearts, "A"}}, [hearts: "A", spades: "10", club: "2", club: "8", club: "9"]}},
+#       {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "A"}}, [hearts: "A", spades: "10", club: "2", club: "8", club: "A"]},
+#       {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "A"}}, [hearts: "A", spades: "10", club: "2", club: "9", club: "A"]},
+#       {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "A"}}, [hearts: "A", spades: "10", club: "8", club: "9", club: "A"]},
+#       {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "A"}}, [hearts: "A", club: "8", club: "9", club: "A", club: "2"]},
+#       {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "A"}}, [hearts: "A", club: "10", club: "9", club: "A", club: "2"]},
+#       {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "A"}}, [hearts: "A", club: "10", club: "8", club: "A", club: "2"]},
+#       {:right, {:high_card, %{"card" => {:hearts, "A"}}, [hearts: "A", club: "10", club: "8", club: "9", club: "2"]}},
+#       {:right, {:two_pair, %{"high_pair" => "A", "low_pair" => "A"}}, [hearts: "A", club: "10", club: "8", club: "9", club: "A"]},
+#       {:right, {:high_card, %{"card" => {:club, "A"}}, [spades: "10", club: "8", club: "9", club: "A", club: "2"]}},
+#       {:right, {:two_pair, %{"high_pair" => "10", "low_pair" => "10"}}, [spades: "10", club: "10", club: "9", club: "A", club: "2"]},
+#       {:right, {:two_pair, %{"high_pair" => "10", "low_pair" => "10"}}, [spades: "10", club: "10", club: "8", club: "A", club: "2"]},
+#       {:right, {:two_pair, %{"high_pair" => "10", "low_pair" => "10"}}, [spades: "10", club: "10", club: "8", club: "9", club: "2"]},
+#       {:right, {:two_pair, %{"high_pair" => "10", "low_pair" => "10"}}, [spades: "10", club: "10", club: "8", club: "9", club: "A"]}
+#     ],
+#     "seat" => 1
+#   },
+#   %{
+#     "made_hands" => [
+#       {:right, {:two_pair, %{"high_pair" => "2", "low_pair" => "2"}}, [hearts: "7", spades: "2", club: "10", club: "2", club: "8"]},
+#       {:right, {:two_pair, %{"high_pair" => "2", "low_pair" => "2"}}, [hearts: "7", spades: "2", club: "10", club: "2", club: "9"]},
+#       {:right, {:two_pair, %{"high_pair" => "2", "low_pair" => "2"}}, [hearts: "7", spades: "2", club: "10", club: "2", club: "A"]},
+#       {:right, {:high_card, %{"card" => {:club, "10"}}, [hearts: "7", spades: "2", club: "10", club: "8", club: "9"]}},
+#       {:right, {:high_card, %{"card" => {:club, "A"}}, [hearts: "7", spades: "2", club: "10", club: "8", club: "A"]}},
+#       {:right, {:high_card, %{"card" => {:club, "A"}}, [hearts: "7", spades: "2", club: "10", club: "9", club: "A"]}},
+#       {:right, {:two_pair, %{"high_pair" => "2", "low_pair" => "2"}}, [hearts: "7", spades: "2", club: "2", club: "8", club: "9"]},
+#       {:right, {:two_pair, %{"high_pair" => "2", "low_pair" => "2"}}, [hearts: "7", spades: "2", club: "2", club: "8", club: "A"]},
+#       {:right, {:two_pair, %{"high_pair" => "2", "low_pair" => "2"}}, [hearts: "7", spades: "2", club: "2", club: "9", club: "A"]},
+#       {:right, {:high_card, %{"card" => {:club, "A"}}, [hearts: "7", spades: "2", club: "8", club: "9", club: "A"]}},
+#       {:right, {:high_card, %{"card" => {:club, "A"}}, [hearts: "7", club: "8", club: "9", club: "A", club: "2"]}},
+#       {:right, {:high_card, %{"card" => {:club, "A"}}, [hearts: "7", club: "10", club: "9", club: "A", club: "2"]}},
+#       {:right, {:high_card, %{"card" => {:club, "A"}}, [hearts: "7", club: "10", club: "8", club: "A", club: "2"]}},
+#       {:right, {:high_card, %{"card" => {:club, "10"}}, [hearts: "7", club: "10", club: "8", club: "9", club: "2"]}},
+#       {:right, {:high_card, %{"card" => {:club, "A"}}, [hearts: "7", club: "10", club: "8", club: "9", club: "A"]}},
+#       {:right, {:two_pair, %{"high_pair" => "2", "low_pair" => "2"}}, [spades: "2", club: "8", club: "9", club: "A", club: "2"]},
+#       {:right, {:two_pair, %{"high_pair" => "2", "low_pair" => "2"}}, [spades: "2", club: "10", club: "9", club: "A", club: "2"]},
+#       {:right, {:two_pair, %{"high_pair" => "2", "low_pair" => "2"}}, [spades: "2", club: "10", club: "8", club: "A", club: "2"]},
+#       {:right, {:two_pair, %{"high_pair" => "2", "low_pair" => "2"}}, [spades: "2", club: "10", club: "8", club: "9", club: "2"]},
+#       {:right, {:high_card, %{"card" => {:club, "A"}}, [spades: "2", club: "10", club: "8", club: "9", club: "A"]}}
+#     ],
+#     "seat" => 9
+#   }
+# ]
